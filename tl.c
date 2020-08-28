@@ -70,7 +70,7 @@ static void tl_list_free(struct tl_list *l)
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * string
  * Strings are represented as usual char * null-terminated string.
- * Size and length are stored before the string (so it is fat pointer).
+ * Size and length are stored before the string (so it is a fat pointer).
  */
 static int *tl_string_size(char *str)  { return ((int *) str) - 2; }
 static int *tl_string_len(char *str)   { return ((int *) str) - 1; }
