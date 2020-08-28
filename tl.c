@@ -45,7 +45,7 @@ struct tl_list *tl_named_data(const char     *name,
  * internal list functions
  */
 static struct tl_list *tl_list_union(struct tl_list *a, struct tl_list *b)
-{
+{  /* Copy a appending copy of b. */
     if (!a) return b ? tl_list_union(b, 0) : 0;
     return tl_new(a->name, a->data,
                   tl_list_union(a->list, 0),
@@ -69,6 +69,8 @@ static void tl_list_free(struct tl_list *l)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * string
+ * Strings are represented as usual char * null-terminated string.
+ * Size and length are stored before the string (so it is fat pointer).
  */
 static int *tl_string_size(char *str)  { return ((int *) str) - 2; }
 static int *tl_string_len(char *str)   { return ((int *) str) - 1; }
@@ -101,6 +103,8 @@ static void tl_string_free(char *str)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * template language translator as automata
+ * Automata states are functions, consuming a character, changing automata,
+ * returning new state and outputting substituted text.
  */
 struct tl {
     struct tl_list *variables;
@@ -137,7 +141,7 @@ static void *tl_state_backslash(struct tl *t, char c);
 static void *tl_state_at(struct tl *t, char c);
 static void *tl_state_subs(struct tl *t, char c);
 static void *tl_state_text(struct tl *t, char c)
-{
+{  /* Normal state is to just copy input, switching state on specials. */
     if (c == '\\') return tl_state_backslash;
     if (c == '@') return tl_state_at;
     if (c == '{') return tl_state_subs;
@@ -146,11 +150,11 @@ static void *tl_state_text(struct tl *t, char c)
 }
 
 static void *tl_state_subs(struct tl *t, char c)
-{
+{  /* Read name until } and output value from variables of this name. */
     if (c == '}') {
         struct tl_list *var = tl_list_get(t->variables, t->name);
         if (var && var->data) {
-            printf("%s", var->data);
+            fputs(var->data, stdout);
         }
         tl_string_free(t->name);
         t->name = 0;
@@ -160,8 +164,16 @@ static void *tl_state_subs(struct tl *t, char c)
     return tl_state_subs;
 }
 
+static void *tl_state_body(struct tl *t, char c);
+static void *tl_state_at(struct tl *t, char c)
+{  /* Read name until { and start reading body after it. */
+    if (c == '{') return tl_state_body;
+    tl_string_add(&t->name, c);
+    return tl_state_at;
+}
+
 static void tl_at(struct tl *t)
-{
+{  /* Repeat the body substitution in context of readed name. */
     struct tl_list *var = tl_list_get(t->variables, t->name);
     for (var = var->list; var; var = var->next) {
         char *c;
@@ -174,23 +186,16 @@ static void tl_at(struct tl *t)
         tl_free(&automata);
     }
 }
-static void *tl_state_body(struct tl *t, char c);
-static void *tl_state_at(struct tl *t, char c)
-{
-    if (c == '{') return tl_state_body;
-    tl_string_add(&t->name, c);
-    return tl_state_at;
-}
 
 static void *tl_state_body(struct tl *t, char c)
-{
+{  /* Read the body until } respecting nesting and call tl_at. */
     if (c == '{') ++t->opened;
-    if (c == '}' && !t->opened--) {
+    else if (c == '}' && !t->opened--) {
         tl_at(t);
         t->opened = 0;
-        free(t->name - 8);
+        tl_string_free(t->name);
         t->name = 0;
-        free(t->body - 8);
+        tl_string_free(t->body);
         t->body = 0;
         return tl_state_text;
     }
@@ -199,12 +204,8 @@ static void *tl_state_body(struct tl *t, char c)
 }
 
 static void *tl_state_backslash(struct tl *t, char c)
-{
-    if (c == '\n') return tl_state_text;
-    if (c == 'n') {
-        putchar('\n');
-        return tl_state_text;
-    }
-    putchar(c);
+{  /* Output newline for \n, nothing for \ and newline, and copy the rest. */
+    if (c == 'n') putchar('\n');
+    else if (c != '\n') putchar(c);
     return tl_state_text;
 }
