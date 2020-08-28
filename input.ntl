@@ -1,0 +1,4 @@
+Hello, {username}!
+
+There are several artciles for you:\
+@articles{\n{title} by {author}}

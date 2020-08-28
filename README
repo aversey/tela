@@ -1,0 +1,29 @@
+    Description
+Template language made simple.
+
+    Overview
+NewbieTL is FOSS: legal info is in the 'LICENSE' file.
+It is written in ANSI C without dependencies except for C standard library.
+NewbieTL is a module, not a library, so it is intended to be changed
+as you wish and included directly into code of your project.
+
+    Compiling
+Compilation is described in Makefile, however it is mostly about flags,
+since the thing is so simple.  Type 'make' to produce working example.
+
+    Example
+Example sets some data and applies the translator.
+Play with input.ntl, passing it to the example as './tl_example < input.ntl'.
+
+    Usage
+Form any data you want in tl_list with tl_new, tl_named_data,
+tl_named_list and tl_plain_list and pass the data into tl_translate.
+It will substitute any {name} with data of name, and any
+@name{body} with body repeatedly translated for each element in list of name,
+so the same rules as for whole text are applied for body,
+but in context extended with the element named elements.
+Also you can screen characters with \, so \@ is @ in output,
+however newline character will disapear, you can output it with \n.
+
+    Motivation
+Templates can be fun and simple.
